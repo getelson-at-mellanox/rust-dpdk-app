@@ -1,5 +1,4 @@
 use dpdklib as raw;
-pub const RTE_API_VER:usize = 0;
 
 pub type DpdkPort = u16;
 pub unsafe fn iter_rte_eth_dev_owned_by(owner_id:u64) -> impl Iterator<Item=DpdkPort> {
