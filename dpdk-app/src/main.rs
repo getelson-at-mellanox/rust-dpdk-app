@@ -79,7 +79,7 @@ unsafe fn start_port(port:&mut Port) {
         *uninit.as_ptr().clone()
     };
 
-    let mut rc = rte_eth_dev_configure(port.port_id, 0, 0,
+    let mut rc = rte_eth_dev_configure(port.port_id, port.rxq_num, port.txq_num,
                                        &port.dev_conf as *const rte_eth_conf);
     if rc != 0 { panic!("failed to configure port-{}: {rc}", port.port_id)}
     println!("port-{} configured", port.port_id);
@@ -88,10 +88,9 @@ unsafe fn start_port(port:&mut Port) {
     if rc != 0 { panic!("port-{}: failed to configure TX queue 0 {rc}", port.port_id)}
     println!("port-{} configured TX queue 0", port.port_id);
 
-    let mbuf_pool_name = CString::new("mbuf pool").unwrap();
+    let mbuf_pool_name = CString::new(format!("mbuf pool port-{}", port.port_id)).unwrap();
     let mbuf_pool = rte_pktmbuf_pool_create(
-        mbuf_pool_name.as_ptr(), 1024, 0,
-        RTE_CACHE_LINE_SIZE as u16,
+        mbuf_pool_name.as_ptr(), 1024, 0, 0,
         RTE_MBUF_DEFAULT_BUF_SIZE as u16, 0);
     if mbuf_pool == 0 as *mut rte_mempool {
         { panic!("port-{}: failed to allocate mempool {rc}", port.port_id)}
