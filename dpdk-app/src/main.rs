@@ -1,15 +1,15 @@
 mod lib;
 
 use std::env;
-use std::ffi::{CStr, CString};
+use std::ffi::{CString};
 use std::os::raw::{c_int, c_char};
 use dpdklib::rte_ethdev::{rte_eth_dev_info, rte_eth_conf, rte_eth_dev_configure,
                           rte_eth_dev_start, rte_eth_tx_queue_setup, rte_eth_rx_queue_setup,
                           rte_pktmbuf_pool_create, rte_eal_init, rte_exit,
-                          rte_eth_txconf, rte_mempool, rte_eth_rxconf, rte_eth_dev_get_name_by_port,
-                          RTE_MBUF_DEFAULT_BUF_SIZE, RTE_ETH_NAME_MAX_LEN};
+                          rte_eth_txconf, rte_mempool, rte_eth_rxconf,
+                          RTE_MBUF_DEFAULT_BUF_SIZE};
 use crate::lib::rte_api::{DpdkPort, iter_rte_eth_dev};
-use crate::lib::utils::init_port_config;
+use crate::lib::utils::{init_port_config, show_ports_summary};
 
 
 struct Port {
@@ -61,13 +61,7 @@ fn main() {
         }
     }
 
-    let mut name_buf:[c_char;RTE_ETH_NAME_MAX_LEN as usize]= [0 as c_char;RTE_ETH_NAME_MAX_LEN as usize];
-    ports.iter().for_each(|p| unsafe {
-        let _rc = rte_eth_dev_get_name_by_port(p.port_id, name_buf.as_mut_ptr());
-        let name = CStr::from_ptr(name_buf.as_ptr());
-        let drv = CStr::from_ptr(p.dev_info.driver_name);
-        println!("{} {} {}", p.port_id, name.to_str().unwrap(), drv.to_str().unwrap());
-    });
+    unsafe { show_ports_summary(&ports); }
 }
 
 unsafe fn start_port(port:&mut Port) {
