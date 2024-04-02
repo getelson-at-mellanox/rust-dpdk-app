@@ -1,4 +1,4 @@
-mod lib;
+mod applib;
 
 use std::env;
 use std::ffi::{CString};
@@ -8,8 +8,8 @@ use dpdklib::rte_ethdev::{rte_eth_dev_info, rte_eth_conf, rte_eth_dev_configure,
                           rte_pktmbuf_pool_create, rte_eal_init, rte_exit,
                           rte_eth_txconf, rte_mempool, rte_eth_rxconf,
                           RTE_MBUF_DEFAULT_BUF_SIZE};
-use crate::lib::rte_api::{DpdkPort, iter_rte_eth_dev};
-use crate::lib::utils::{init_port_config, show_ports_summary};
+use crate::applib::rte_api::{DpdkPort, iter_rte_eth_dev};
+use crate::applib::utils::{init_port_config, show_ports_summary};
 
 
 struct Port {
