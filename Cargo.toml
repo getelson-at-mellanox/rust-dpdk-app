@@ -1,0 +1,2 @@
+[workspace]
+members = [ "dpdk-lib", "dpdk-app"]

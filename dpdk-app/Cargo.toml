@@ -1,5 +1,5 @@
 [package]
-name = "dpdk"
+name = "dpdkapp"
 version = "0.1.0"
 edition = "2021"
 
