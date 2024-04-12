@@ -1,13 +1,19 @@
 mod applib;
 
 use std::env;
-use std::ffi::{CString};
+use std::ffi::{c_void, CString};
 use std::os::raw::{c_int, c_char};
-use dpdklib::rte_ethdev::{rte_eth_dev_info, rte_eth_conf, rte_eth_dev_configure,
-                          rte_eth_dev_start, rte_eth_tx_queue_setup, rte_eth_rx_queue_setup,
-                          rte_pktmbuf_pool_create, rte_eal_init, rte_exit,
-                          rte_eth_txconf, rte_mempool, rte_eth_rxconf,
-                          RTE_MBUF_DEFAULT_BUF_SIZE};
+use std::{thread, time};
+use dpdklib::rte_ethdev::
+{rte_eth_dev_info, rte_eth_conf, rte_eth_dev_configure, rte_eth_dev_start, rte_eth_tx_queue_setup,
+ rte_eth_rx_queue_setup, rte_pktmbuf_pool_create, rte_eal_init, rte_exit, rte_eth_txconf, rte_mempool,
+ rte_eth_rxconf, RTE_MBUF_DEFAULT_BUF_SIZE, rte_flow_attr, rte_flow_item, rte_flow_error,
+ rte_flow_item_eth, RTE_ETHER_TYPE_IPV4,
+ rte_flow_item_type_RTE_FLOW_ITEM_TYPE_END, rte_flow_item_type_RTE_FLOW_ITEM_TYPE_ETH,
+ rte_flow_item_type_RTE_FLOW_ITEM_TYPE_IPV4, rte_flow_item_type_RTE_FLOW_ITEM_TYPE_UDP,
+ rte_flow_action, rte_flow_action_type_RTE_FLOW_ACTION_TYPE_END,
+ rte_be16_t, rte_flow_action_type_RTE_FLOW_ACTION_TYPE_PORT_ID,
+ rte_flow_action_port_id, rte_flow_create, rte_flow};
 use crate::applib::rte_api::{DpdkPort, iter_rte_eth_dev};
 use crate::applib::utils::{init_port_config, show_ports_summary};
 
@@ -30,7 +36,6 @@ impl Port {
             },
             dev_conf:{
                 let uninit: ::std::mem::MaybeUninit<rte_eth_conf> = ::std::mem::MaybeUninit::zeroed().assume_init();
-
                 *uninit.as_ptr()
             },
             rxq_num:1,
@@ -62,6 +67,7 @@ fn main() {
     }
 
     unsafe { show_ports_summary(&ports); }
+    unsafe { flow_create(&ports[0])}
 }
 
 unsafe fn start_port(port:&mut Port) {
@@ -93,3 +99,80 @@ unsafe fn start_port(port:&mut Port) {
     if rc != 0 { panic!("failed to start port-{}: {rc}", port.port_id)}
     println!("port-{} started", port.port_id);
 }
+
+unsafe fn init_struct_ptr<T>() -> ::std::mem::MaybeUninit<T> {
+    let uninit: ::std::mem::MaybeUninit<T> = ::std::mem::MaybeUninit::zeroed().assume_init();
+    uninit
+
+}
+
+unsafe fn init_struct<T: Copy>() -> T {
+    *init_struct_ptr::<T>().as_ptr()
+}
+
+unsafe fn flow_create(port:&Port) {
+    let err = init_struct::<rte_flow_error>();
+    let mut attr = init_struct::<rte_flow_attr>();
+    attr.set_transfer(1);
+    let mut port_conf = init_struct::<rte_flow_action_port_id>();
+    port_conf.id = 1;
+
+    let mut eth_spec = init_struct::<rte_flow_item_eth>();
+    let mut eth_mask = init_struct::<rte_flow_item_eth>();
+    eth_spec.__bindgen_anon_1.hdr.ether_type = (RTE_ETHER_TYPE_IPV4 as u16).to_be();
+    eth_mask.__bindgen_anon_1.hdr.ether_type = 0xffff as rte_be16_t;
+
+    let pattern= [
+        rte_flow_item {
+            type_:rte_flow_item_type_RTE_FLOW_ITEM_TYPE_ETH,
+            spec: (&eth_spec as *const rte_flow_item_eth) as *const c_void,
+            mask: (&eth_mask as *const rte_flow_item_eth) as *const c_void,
+            last: 0 as *const c_void,
+        },
+        rte_flow_item {
+            type_:rte_flow_item_type_RTE_FLOW_ITEM_TYPE_IPV4,
+            spec: 0 as *const c_void,
+            last:0 as *const c_void,
+            mask:0 as *const c_void,
+        },
+        rte_flow_item {
+            type_:rte_flow_item_type_RTE_FLOW_ITEM_TYPE_UDP,
+            spec: 0 as *const c_void,
+            last:0 as *const c_void,
+            mask:0 as *const c_void,
+        },
+        rte_flow_item {
+            type_:rte_flow_item_type_RTE_FLOW_ITEM_TYPE_END,
+            spec: 0 as *const c_void,
+            last:0 as *const c_void,
+            mask:0 as *const c_void,
+        },
+    ];
+
+    let actions = [
+        rte_flow_action {
+            type_: rte_flow_action_type_RTE_FLOW_ACTION_TYPE_PORT_ID,
+            conf: (&port_conf as *const rte_flow_action_port_id) as *const c_void
+        },
+        rte_flow_action {
+            type_: rte_flow_action_type_RTE_FLOW_ACTION_TYPE_END,
+            conf: 0 as *const c_void
+        },
+    ];
+
+    let flow = rte_flow_create(port.port_id, &attr as *const rte_flow_attr,
+                               &pattern as *const rte_flow_item,
+                               &actions as *const rte_flow_action,
+                               (&err as *const rte_flow_error) as *mut rte_flow_error);
+
+    if flow == 0 as *mut rte_flow {
+        println!("failed to create a flow")
+    }
+
+    println!("created a flow");
+    let delay = time::Duration::from_secs(1);
+    loop {
+        thread::sleep(delay);
+    }
+}
+
