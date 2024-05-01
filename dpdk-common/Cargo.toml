@@ -1,5 +1,5 @@
 [package]
-name = "dpdkapp"
+name = "dpdk_common"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,3 @@ edition = "2021"
 
 [dependencies]
 dpdklib = {path = "../dpdk-lib"}
-dpdk_common = {path = "../dpdk-common" }
-flow_lib = {path = "../flow-lib"}
-

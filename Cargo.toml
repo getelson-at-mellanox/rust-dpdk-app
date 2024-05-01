@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = [ "dpdk-lib", "dpdk-app"]
+members = [ "dpdk-lib", "dpdk-app", "flow-lib", "dpdk-common"]
